@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS public."Internee"
     "hasWorkExperience" boolean NOT NULL DEFAULT false,
     "moscowDistrict" smallint,
     trainee boolean NOT NULL DEFAULT false,
-    essay character varying[],
     photo character varying,
     "notifyByMail" boolean NOT NULL DEFAULT true,
     rating smallint NOT NULL DEFAULT 0,
@@ -37,9 +36,6 @@ COMMENT ON TABLE public."Internee"
 
 COMMENT ON COLUMN public."Internee".trainee
     IS 'Показывает, стал ли кандидат стажером';
-
-COMMENT ON COLUMN public."Internee".essay
-    IS 'До 3-х ссылок на эссе';
 
 COMMENT ON COLUMN public."Internee".photo
     IS 'ссылка на фото на сервере';
@@ -114,8 +110,6 @@ CREATE TABLE IF NOT EXISTS public."Mentor"
     birthday date NOT NULL,
     photo character varying,
     "notifyByMail" boolean NOT NULL DEFAULT true,
-    "interneesId" bigint[],
-    "internshipRequestId" bigint[],
     PRIMARY KEY (id),
     UNIQUE (id)
 );
@@ -148,8 +142,6 @@ CREATE TABLE IF NOT EXISTS public."Tutor"
     birthday date NOT NULL,
     photo character varying,
     "notifyByMail" boolean NOT NULL DEFAULT true,
-    "interneesId" bigint[],
-    "internshipRequestId" bigint[],
     "tutorSchoolProgramsId" bigint,
     "tutorSchoolResult" smallint,
     "tutorSchoolStage" character varying,
@@ -188,10 +180,6 @@ CREATE TABLE IF NOT EXISTS public."HR"
     birthday date NOT NULL,
     photo character varying,
     "notifyByMail" boolean NOT NULL DEFAULT true,
-    internees bigint[],
-    "internshipRequestId" bigint[],
-    tutors bigint[],
-    mentors bigint[],
     PRIMARY KEY (id),
     UNIQUE (id)
 );
@@ -201,12 +189,6 @@ COMMENT ON TABLE public."HR"
 
 COMMENT ON COLUMN public."HR".photo
     IS 'ссылка на фото на сервере';
-
-COMMENT ON COLUMN public."HR".internees
-    IS 'стажеры / кандидаты, которыми занимается сотрудник HR';
-
-COMMENT ON COLUMN public."HR"."internshipRequestId"
-    IS 'Заявки на стажировку в работе (только со стадией - у HR)...';
 
 CREATE TABLE IF NOT EXISTS public."PasswordHR"
 (
@@ -392,7 +374,6 @@ CREATE TABLE IF NOT EXISTS public."Companies"
     id bigserial NOT NULL,
     name character varying NOT NULL,
     rating smallint,
-    reviews character varying[],
     PRIMARY KEY (id),
     UNIQUE (id)
 );
@@ -402,9 +383,6 @@ COMMENT ON TABLE public."Companies"
 
 COMMENT ON COLUMN public."Companies".rating
     IS 'рейтинг организации на основе отзывов стажеров';
-
-COMMENT ON COLUMN public."Companies".reviews
-    IS 'Тексты отзывов стажеров';
 
 CREATE TABLE IF NOT EXISTS public."StatusesInternship"
 (
@@ -460,7 +438,7 @@ CREATE TABLE IF NOT EXISTS public."TutorSchoolPrograms"
 (
     id bigserial NOT NULL,
     name character varying NOT NULL,
-    dates date[] NOT NULL,
+    dates character varying NOT NULL,
     materials bigint,
     PRIMARY KEY (id),
     UNIQUE (id)
@@ -468,6 +446,100 @@ CREATE TABLE IF NOT EXISTS public."TutorSchoolPrograms"
 
 COMMENT ON TABLE public."TutorSchoolPrograms"
     IS 'Школа наставников - программы';
+
+CREATE TABLE IF NOT EXISTS public."Essay"
+(
+    id bigserial,
+    text character varying,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."EssayInternee"
+(
+    id bigserial NOT NULL,
+    "essayId" bigserial NOT NULL,
+    "interneeId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."MentorControlsInternees"
+(
+    id bigserial NOT NULL,
+    "InterneeId" bigserial NOT NULL,
+    "MentorId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."MentorControlsInternshipRequests"
+(
+    id bigserial NOT NULL,
+    "mentorId" bigserial NOT NULL,
+    "internshipId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."TutorControlsInternees"
+(
+    id bigserial NOT NULL,
+    "tutorId" bigserial NOT NULL,
+    "interneeId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."TutorControlsInternshipRequest"
+(
+    id bigserial NOT NULL,
+    "tutorId" bigserial NOT NULL,
+    "internshipId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."HRControlsInternees"
+(
+    id bigserial NOT NULL,
+    "InterneeId" bigserial NOT NULL,
+    "hrId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."HRControlsInternshipRequests"
+(
+    id bigserial NOT NULL,
+    "hrId" bigserial NOT NULL,
+    "internshipId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."HRControlsTutors"
+(
+    id bigserial NOT NULL,
+    "tutorId" bigserial NOT NULL,
+    "hrId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."HRControlsMentors"
+(
+    id bigserial NOT NULL,
+    "mentorId" bigserial NOT NULL,
+    "hrId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."Reviews"
+(
+    id bigserial NOT NULL,
+    text character varying NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public."ReviewsCompanies"
+(
+    id bigserial NOT NULL,
+    "companyId" bigserial NOT NULL,
+    "reviewId" bigserial NOT NULL,
+    PRIMARY KEY (id)
+);
 
 ALTER TABLE IF EXISTS public."Internee"
     ADD FOREIGN KEY (citizenship)
@@ -683,26 +755,165 @@ ALTER TABLE IF EXISTS public."ResultsPull"
     ON UPDATE NO ACTION
     ON DELETE NO ACTION
     NOT VALID;
-	
-INSERT INTO public."Citizenship"(
-	name)
-	VALUES ('РФ'), ('Казахстан'), ('Молдавия'), ('Беларусь');
-	
-INSERT INTO public."City"(
-	name)
-	VALUES ('Москва'), ('Воронеж'), ('Екатеринбург'), ('Санкт-Петербург');
-	
-INSERT INTO public."Companies"(
-	name, rating, reviews)
-	VALUES ('ДИТ', 5, '{"Отличная компания", "Было интересно"}'), ('ДОС', 3, '{"Скромная компания", "Было скучно"}');
-	
-INSERT INTO public."EduPrograms"(
-	name)
-	VALUES ('ПДД'), ('ГосЗакупки'), ('ГОСТ');
-	
-INSERT INTO public."HR"(
-	mobile, "e-mail", snils, name, surname, patronymic, birthday, photo, "notifyByMail", internees, "internshipRequestId", tutors, mentors)
-	VALUES ('+71234567892', 'hr@login.ru', '123456789', 'Иван', 'Петров', 'Всеволодович', '1983-05-17', 'http://radilov.ru/images/picts/krvd/kinggv/georgyvsevolod04.jpg', true, '{1,2}', '{1,2}', '{1,2}', '{1,2}'),
-	('+71532569892', 'hr2@login.ru', '12844489', 'Антонина', 'Ищакова', 'Петровна', '1980-05-22', 'https://sovet.citysever.ru/img/all/0_foto_smirnovoy_t_p_.jpg', true, '{1,2}', '{1,2}', '{1,2}', '{1,2}');
+
+
+ALTER TABLE IF EXISTS public."EssayInternee"
+    ADD FOREIGN KEY ("essayId")
+    REFERENCES public."Essay" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."EssayInternee"
+    ADD FOREIGN KEY ("interneeId")
+    REFERENCES public."Internee" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."MentorControlsInternees"
+    ADD FOREIGN KEY ("InterneeId")
+    REFERENCES public."Internee" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."MentorControlsInternees"
+    ADD FOREIGN KEY ("MentorId")
+    REFERENCES public."Mentor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."MentorControlsInternshipRequests"
+    ADD FOREIGN KEY ("mentorId")
+    REFERENCES public."Mentor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."MentorControlsInternshipRequests"
+    ADD FOREIGN KEY ("internshipId")
+    REFERENCES public."InternshipRequest" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."TutorControlsInternees"
+    ADD FOREIGN KEY ("tutorId")
+    REFERENCES public."Tutor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."TutorControlsInternees"
+    ADD FOREIGN KEY ("interneeId")
+    REFERENCES public."Internee" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."TutorControlsInternshipRequest"
+    ADD FOREIGN KEY ("tutorId")
+    REFERENCES public."Tutor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."TutorControlsInternshipRequest"
+    ADD FOREIGN KEY ("internshipId")
+    REFERENCES public."InternshipRequest" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsInternees"
+    ADD FOREIGN KEY ("InterneeId")
+    REFERENCES public."Internee" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsInternees"
+    ADD FOREIGN KEY ("hrId")
+    REFERENCES public."HR" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsInternshipRequests"
+    ADD FOREIGN KEY ("hrId")
+    REFERENCES public."HR" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsInternshipRequests"
+    ADD FOREIGN KEY ("internshipId")
+    REFERENCES public."InternshipRequest" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsTutors"
+    ADD FOREIGN KEY ("tutorId")
+    REFERENCES public."Tutor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsTutors"
+    ADD FOREIGN KEY ("hrId")
+    REFERENCES public."HR" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsMentors"
+    ADD FOREIGN KEY ("mentorId")
+    REFERENCES public."Mentor" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."HRControlsMentors"
+    ADD FOREIGN KEY ("hrId")
+    REFERENCES public."HR" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."ReviewsCompanies"
+    ADD FOREIGN KEY ("companyId")
+    REFERENCES public."Companies" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
+
+
+ALTER TABLE IF EXISTS public."ReviewsCompanies"
+    ADD FOREIGN KEY ("reviewId")
+    REFERENCES public."Reviews" (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION
+    NOT VALID;
 
 END;
